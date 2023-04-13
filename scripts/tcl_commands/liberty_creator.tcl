@@ -26,10 +26,10 @@ proc run_liberty_creator {args} {
     set typical_lib_exists [info exists ::env(LIB_TYPICAL)]
     set fastest_lib_exists [info exists ::env(LIB_FASTEST)]
 
-    if {slowest_lib_exists == 0 && typical_lib_exists == 0 && fastest_lib_exists && 0} {
-        puts_err "No corners are available! Exiting..."
-        return
-    }
+    # if {slowest_lib_exists == 0 && typical_lib_exists == 0 && fastest_lib_exists && 0} {
+    #     puts_err "No corners are available! Exiting..."
+    #     return
+    # }
 
     set leakage_file [glob $::env(signoff_logs)/*_sta.log]
 
