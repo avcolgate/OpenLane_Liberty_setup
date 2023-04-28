@@ -49,6 +49,7 @@ def table_merge(data):
     quotes = '\"'
     comma = ''
     line_feed = '\n'
+    slash = '\\'
 
     for item in data:
         for name, value in item.items():
@@ -75,27 +76,17 @@ def table_merge(data):
         temp_value = ''
 
         for counter, value in enumerate(temp_data):
-            if counter == 0:
-                left_bracket = ''
-            else:
+            if counter != 0:
                 tab = '\t\t\t\t\t'
-            if counter == len(value.split(sep=',')):
-                # TODO: Cringe
-                right_bracket = ')'
-                line_feed = ''
-                left_bracket = ''
-                right_bracket = ''
-                line_feed = '\n'
-                comma = ''
-            else:
-                comma = ',' + '\\'
 
-            temp_value = temp_value + tab + quotes + value + quotes + comma + line_feed
+            if counter == (len(value.split(sep=',')) - 1):
+                line_feed = ''
+                comma = ''
+                slash = ''
+
+            temp_value = temp_value + tab + value + comma + line_feed
 
             tab = ''
-            left_bracket = ''
-            right_bracket = ''
-            comma = ''
             line_feed = '\n'
 
         all_data.append({name: temp_value})
@@ -167,7 +158,7 @@ def final_pin_data(data_files):
                         for cell_related_template in cell_fall_data:
                             if pin_template_name in cell_related_template:
                                 related_pin_instance.cell_fall[pin_template_name].values = \
-                                    cell_related_template[pin_template_name]
+                                    tuple(cell_related_template[pin_template_name].split())
 
             for related_pin_instance in pins_final_data[key]:
                 pin_template_names = []
@@ -180,7 +171,7 @@ def final_pin_data(data_files):
                         for cell_related_template in cell_rise_data:
                             if pin_template_name in cell_related_template:
                                 related_pin_instance.cell_rise[pin_template_name].values = \
-                                    cell_related_template[pin_template_name]
+                                    tuple(cell_related_template[pin_template_name].split())
 
             for related_pin_instance in pins_final_data[key]:
                 pin_template_names = []
@@ -194,7 +185,7 @@ def final_pin_data(data_files):
                         for cell_related_template in fall_transition_data:
                             if pin_template_name in cell_related_template:
                                 related_pin_instance.fall_transition[pin_template_name].values = \
-                                    cell_related_template[pin_template_name]
+                                    tuple(cell_related_template[pin_template_name].split())
 
             for related_pin_instance in pins_final_data[key]:
                 pin_template_names = []
@@ -207,7 +198,7 @@ def final_pin_data(data_files):
                         for cell_related_template in rise_transition_data:
                             if pin_template_name in cell_related_template:
                                 related_pin_instance.rise_transition[pin_template_name].values = \
-                                    cell_related_template[pin_template_name]
+                                    tuple(cell_related_template[pin_template_name].split())
 
     for key in keys_pins:
         for obj in pins:
@@ -215,5 +206,4 @@ def final_pin_data(data_files):
                 values[0].pin[key].timing[0] = pins_final_data[obj][0]
 
     final_data = values[0]
-    print(f"All the pins have been combined.")
     return final_data

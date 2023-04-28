@@ -129,7 +129,10 @@ proc run_magic_step {args} {
     }
 }
 proc run_liberty_creator_step {args} {
-    run_liberty_creator
+    set additional_libs [list]
+	lappend additional_libs "/home/vinogradov/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fake.lib"
+
+    run_liberty_creator $additional_libs
 }
 
 proc run_klayout_step {args} {
@@ -188,7 +191,7 @@ proc run_non_interactive_mode {args} {
         "drc" "run_drc_step $DRC_ENABLED " \
         "antenna_check" "run_antenna_check_step $ANTENNACHECK_ENABLED " \
         "cvc_rv" "run_erc_step" \
-        "liberty_creator" "run_liberty_creator"
+        "liberty_creator" "run_liberty_creator_step"
     ]
 
     if { [info exists arg_values(-from) ]} {

@@ -60,6 +60,7 @@ See GroupMeta's documentation and example of configuration file at doc/templates
 
 from itertools import count
 from functools import partial
+import json
 import re
 
 
@@ -209,39 +210,14 @@ class _LibertyGroup:
                 g.dump(f, indent)
         
         def dump_attrs(n, as_):
-
-            if n == 'values' or n == 'index_1' or n == 'index_2':
-                double_dot = ''
-                l_bracket = '('
-                r_bracket = ');'
-                quotes = '"'
-            else:
-                double_dot = ':'
-                l_bracket = ''
-                r_bracket = ''
-                quotes = ''
-
-            if n == 'library_features' or n == 'comment':
-                l_comment_bracket = '/* '
-                r_comment_bracket = ' */'
-            else:
-                l_comment_bracket = ''
-                r_comment_bracket = ''
-
             for a in as_:
-                if '\n' in a:
-                    quotes = ''
-
                 if isinstance(a, tuple):
                     fmtstr = indent + '{} \t(' + \
                              ((', \\\n' + indent + ' ' * len(n) + ' \t ').join(['"{}"'] * len(a)) if ',' in a[0]
                               else ','.join(['{}'] * len(a))) + ');\n'
                 else:
-                    fmtstr = indent + '{} ' + double_dot + l_bracket + quotes + ' {}' + quotes + r_bracket \
-                             + r_comment_bracket + '\n'
+                    fmtstr = indent + '{} : {};\n'
                     a = (a,)
-
-                n = l_comment_bracket + n
                 f.write(fmtstr.format(n, *a))
         
         f.write(opener)
@@ -258,6 +234,39 @@ class _LibertyGroup:
             else:
                 dump_attrs(n, [a])
         f.write(closer)
+
+    def to_json_dict(self, convert_numerics=True):
+        d = {}
+
+        def convert_attr(s):
+            if s.isdigit():
+                int(s)
+            try:
+                return float(s)
+            except ValueError:
+                return s
+        convert_attr = convert_attr if convert_numerics else lambda s: s
+
+        def convert_iterable(it):
+            return [convert(v) for v in it]
+
+        def convert(v):
+            if isinstance(v, str):
+                return convert_attr(v)
+            elif isinstance(v, (list, tuple, set)):
+                return convert_iterable(v)
+            elif isinstance(v, dict):
+                return {k: convert(vv) for k, vv in v.items()}
+            elif hasattr(v, 'to_json_dict'):
+                return v.to_json_dict()
+            else:
+                return str(v)
+
+        for n, a in self.__dict__.items():
+            if n.startswith('_') or callable(a) or n == 'name':
+                continue
+            d[n] = convert(a)
+        return d
 
 
 class GroupMeta(type):
@@ -478,3 +487,21 @@ def dump(lib: 'library', filename: str) -> None:
     with open(filename, 'w') as f:
         f.write('/**/\n')
         lib.dump(f, '')
+
+
+def to_json(*libs: 'library', filename: str, convert_numerics=True) -> None:
+    """Write JSON file"""
+    names = set()
+    duplicate_names = set()
+    for lib in libs:
+        (duplicate_names if lib.name in names else names).add(lib.name)
+
+    d = {'library': {name: [] for name in duplicate_names}}
+    for lib in libs:
+        if lib.name in duplicate_names:
+            d['library'][lib.name].append(lib.to_json_dict(convert_numerics))
+        else:
+            d['library'][lib.name] = lib.to_json_dict(convert_numerics)
+
+    with open(filename, 'w') as f:
+        json.dump(d, f)

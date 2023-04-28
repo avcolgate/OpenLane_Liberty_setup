@@ -1,4 +1,5 @@
-from typing import List
+from typing import Any, List, Tuple
+import re
 
 class Template:
     def __init__(self, name=''):
@@ -12,13 +13,13 @@ def parse_templates(file_path: str) -> List[Template]:
     f = open(file_path, 'r')
 
     for line in f:
-        if not is_template_section and 'lu_table_template' in line:
+        if not is_template_section and line.strip().startswith('lu_table_template'):
             is_template_section = True
             template = Template()
-            name = line[line.find('(')+1:line.find(')')].replace('"', '').strip()
+            name = re.search("\((.+)\)", line) # collecting name of template in parentheses
             template.name  = name
 
-        if is_template_section and template:
+        if is_template_section:
             if 'variable' in line:
                 var = line[line.find(':')+1:line.find(';')].replace('"', '').strip()
                 template.variables.append(var)
@@ -35,39 +36,72 @@ def parse_templates(file_path: str) -> List[Template]:
                 is_template_section = False
                 template_list.append(template)
 
-        if 'cell(' in line.replace(' ', ''): #! temp
+        if 'cell(' in line.replace(' ', ''):
             break
-
-    if not template_list:
-        print('get transition step:\n\tfatal: no templates found in input Liberty!\n\texiting')
-        exit()
 
     return template_list
 
 
-def get_transitions(file_path: str) -> List[float]:
-    min_value = 9999999
-    template = None
+def get_transitions(file_path: str) -> Tuple[bool, Any]:
+    """
+    Возвращает кортеж (success, result)
+    При success = True, result будет содержать список значений input_net_transition   List[str]
+    При success = False, result будет содержать сообщение об ошибке                   str
+    """
+    success = True
+    result = ""
+
+    min_value = 999999999
+    template = Template()
 
     template_list = parse_templates(file_path)
 
+    if not template_list:
+        success = False
+        result = 'No templates found in input Liberty'
+
     # choosing template where the maximum capacitance is minimal
-    for templ in template_list:
-        if 'input_net_transition' in templ.variables and 'total_output_net_capacitance' in templ.variables and \
-                                                                len(templ.indices) == len(templ.variables) == 2:
-            for num, var in enumerate(templ.variables):
+    for t in template_list:
+        if 'input_net_transition'         in t.variables and \
+           'total_output_net_capacitance' in t.variables and \
+            len(t.indices) == len(t.variables) == 2:
+            for num, var in enumerate(t.variables):
                 if var == 'total_output_net_capacitance':
-                    value = templ.indices[num][-1] # the last (max) index in line of total_output_net_capacitance
+                    value = t.indices[num][-1] # the last (max) index in line of total_output_net_capacitance
             if value < min_value:
                 min_value = value
-                template = templ
+                template = t
 
-    if template is None:
-        print('get transition step:\n\tfatal: no correct templates found in input Liberty!\n\texiting')
-        exit()
+    if not template.name and template_list:
+        success = False
+        result = 'No correct templates found in input Liberty'
 
     for num, var in enumerate(template.variables):
         if var == 'input_net_transition':
-            transition_list = template.indices[num]
+            result = template.indices[num]
 
-    return transition_list
+    return (success, result)
+
+def get_conditions(file_path: str) -> Tuple[bool, Any]:
+    conditions = ""
+    result = ""
+    success = True
+
+    f = open(file_path, 'r')
+    for line in f:
+        if line.strip().startswith('default_operating_conditions'):
+            conditions = line[line.find('"')+1:line.rfind('"')].strip()
+            break
+
+    if not conditions:
+        success = False
+        result = "No information about default operating conditions in Library"
+    else:
+        result = conditions
+
+    return (success, result)
+
+
+# print(get_conditions('/home/vinogradov/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib'))
+
+# print(get_transitions('/home/vinogradov/.volare/CMOS8F_4M/libs.ref/CORELIB8DLL/liberty/nom_1.65V_25C/CORELIB8DLL.lib'))

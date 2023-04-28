@@ -22,7 +22,7 @@ def pin_data_init(timing_data, key):
             i = i + 1
         i = 0
     return rise_constraint_data, fall_constraint_data
-def bus_data_init(timing_data, bus_key, related_keys):
+def bus_data_init(timing_data, related_keys):
     rise_constraint_data = {}
     fall_constraint_data = {}
 
@@ -35,6 +35,7 @@ def bus_data_init(timing_data, bus_key, related_keys):
                 if index not in rise_constraint_data[key]:
                     rise_constraint_data[key][index] = []
                 if hasattr(item, 'rise_constraint'):
+                    item.rise_constraint['scalar'].name = '%sample%'
                     rise_constraint_data[key][index].append(item.rise_constraint['scalar'].values)
 
                 if key not in fall_constraint_data:
@@ -42,6 +43,7 @@ def bus_data_init(timing_data, bus_key, related_keys):
                 if index not in fall_constraint_data[key]:
                     fall_constraint_data[key][index] = []
                 if hasattr(item, 'fall_constraint'):
+                    item.fall_constraint['scalar'].name = '%sample%'
                     fall_constraint_data[key][index].append(item.fall_constraint['scalar'].values)
 
     return rise_constraint_data, fall_constraint_data
@@ -85,7 +87,6 @@ def merge_pins(data):
                 comma = ''
                 slash = '\\'
             if i == len(all_data_values) - 1:
-                comma = ''
                 line_feed = ''
                 right_bracket = '"'
 
@@ -132,13 +133,14 @@ def merge_bus(data):
                 line_feed = '\n'
                 slash = '\\'
                 right_bracket = '"'
-                comma = ','
+                comma = ''
             if i == len(data[0]):
                 comma = ''
                 line_feed = ''
                 right_bracket = '"'
                 slash = ''
-            temp += tab + left_bracket + scalar + right_bracket + comma + slash + line_feed
+
+            temp += tab + scalar + comma + line_feed
 
             left_bracket = ''
             right_bracket = ''
@@ -174,114 +176,121 @@ def final_data(data_files):
                 cell_name = name
             values.append(value)
 
+    # Bus
+    if hasattr(values[0], 'bus'):
+        for item in values:
+            keys_bus = []
+            keys_bus_related_pins = []
+            values_bus = []
+            bus_final_data = {}
+
+            for name, value in item.bus.items():
+                keys_bus.append(name)
+                values_bus.append(value)
+
+            for key in keys_bus:
+                for value in values_bus:
+                    if value.name == key:
+                        if hasattr(value, 'pin'):
+                            for related_pin in value.pin:
+                                if hasattr(value.pin[related_pin], 'timing'):
+                                    keys_bus_related_pins.append(related_pin)
+                    keys_bus_related_pins = list(set(keys_bus_related_pins))
+
+            for bus in values_bus:
+                for pin in bus.pin:
+                    temp_pin = bus.pin
+                    if temp_pin[pin].name in keys_bus_related_pins:
+                        if hasattr(temp_pin[pin], 'timing'):
+                            if temp_pin[pin].name not in timing_data_bus.keys():
+                                keys_bus_related_pins.append(temp_pin[pin].name)
+                                timing_data_bus[temp_pin[pin].name] = []
+                            if temp_pin[pin].name in timing_data_bus.keys():
+                                timing_data_bus[temp_pin[pin].name].append(temp_pin[pin].timing)
+
+            for key in keys_bus:
+                bus_final_data[key] = {}
+                for pin_key in keys_bus_related_pins:
+                    bus_final_data[key][pin_key] = timing_data_bus[pin_key][0]
+
+        bus_rise_constraint, bus_fall_constraint = bus_data_init(timing_data_bus, keys_bus_related_pins)
+        for key in keys_bus:
+            for related_key in keys_bus_related_pins:
+                if hasattr(bus_final_data[key][related_key][0], 'rise_constraint')\
+                        or hasattr(bus_final_data[key][related_key][0], 'fall_constraint'):
+                    bus_rise_constraint_data = merge_bus(bus_rise_constraint[related_key])
+                    bus_fall_constraint_data = merge_bus(bus_fall_constraint[related_key])
+
+                    for iteration in range(0, len(bus_rise_constraint_data)):
+                        if related_key in values[0].bus[key].pin:
+                            if hasattr(values[0].bus[key].pin[related_key].timing[iteration], 'rise_constraint'):
+                                    if 'scalar' in values[0].bus[key].pin[related_key].timing[iteration].rise_constraint:
+                                        values[0].bus[key].pin[related_key].timing[iteration].rise_constraint['scalar']\
+                                            .values = tuple(copy.deepcopy(bus_rise_constraint_data[iteration].split()))
+
+                    for iteration in range(0, len(bus_fall_constraint_data)):
+                        if related_key in values[0].bus[key].pin:
+                            if hasattr(values[0].bus[key].pin[related_key].timing[iteration], 'fall_constraint'):
+                                    if 'scalar' in values[0].bus[key].pin[related_key].timing[iteration].fall_constraint:
+                                        values[0].bus[key].pin[related_key].timing[iteration].fall_constraint['scalar']\
+                                            .values = tuple(copy.deepcopy(bus_fall_constraint_data[iteration].split()))
+
+
+    if hasattr(values[0], 'pin'):
     # Pin
-    for item in values:
-        keys_pins = []
-        values_pins = []
-        pins_final_data = {}
+        for item in values:
+            keys_pins = []
+            values_pins = []
+            pins_final_data = {}
 
-        for name, value in item.pin.items():
-            keys_pins.append(name)
-            values_pins.append(value)
+            for name, value in item.pin.items():
+                keys_pins.append(name)
+                values_pins.append(value)
 
-        for key in keys_pins:
-            for value in values_pins:
-                if value.name == key:
-                    if hasattr(value, 'timing'):
-                        timing_pin_names.append(value.name)
-                timing_pin_names = list(set(timing_pin_names))
+            for key in keys_pins:
+                for value in values_pins:
+                    if value.name == key:
+                        if hasattr(value, 'timing'):
+                            timing_pin_names.append(value.name)
+                    timing_pin_names = list(set(timing_pin_names))
 
-        for pin in values_pins:
-            if pin.name in timing_pin_names:
-                if hasattr(pin, 'timing'):
-                    if pin.name not in timing_data.keys():
-                        pins.append(pin.name)
-                        timing_data[pin.name] = []
-                    if pin.name in timing_data.keys():
-                        timing_data[pin.name].append(pin.timing)
+            for pin in values_pins:
+                if pin.name in timing_pin_names:
+                    if hasattr(pin, 'timing'):
+                        if pin.name not in timing_data.keys():
+                            pins.append(pin.name)
+                            timing_data[pin.name] = []
+                        if pin.name in timing_data.keys():
+                            timing_data[pin.name].append(pin.timing)
+
+            for key in pins:
+                pins_final_data[key] = timing_data[key][0]
 
         for key in pins:
-            pins_final_data[key] = timing_data[key][0]
+            if hasattr(timing_data[key][0][0], 'rise_constraint') or hasattr(timing_data[key][0][0], 'fall_constraint'):
+                rise_constraint_data, fall_constraint_data = pin_data_init(timing_data, key)
 
-    # Bus
-    for item in values:
-        keys_bus = []
-        keys_bus_related_pins = []
-        values_bus = []
-        bus_final_data = {}
+                merged_rise = {}
+                for i, instance in rise_constraint_data.items():
+                    merged_rise[i] = merge_pins(instance).split()
 
-        for name, value in item.bus.items():
-            keys_bus.append(name)
-            values_bus.append(value)
+                merged_fall = {}
+                for i, instance in fall_constraint_data.items():
+                    merged_fall[i] = merge_pins(instance).split()
 
-        for key in keys_bus:
-            for value in values_bus:
-                if value.name == key:
-                    if hasattr(value, 'pin'):
-                        for related_pin in value.pin:
-                            if hasattr(value.pin[related_pin], 'timing'):
-                                keys_bus_related_pins.append(related_pin)
-                keys_bus_related_pins = list(set(keys_bus_related_pins))
+                for iteration in range(0, len(merged_rise)):
+                    if hasattr(values[0].pin[key].timing[iteration], 'rise_constraint'):
+                        if 'scalar' in values[0].pin[key].timing[iteration].rise_constraint:
+                            values[0].pin[key].timing[iteration].rise_constraint['scalar'].values \
+                                = tuple(copy.deepcopy(merged_rise[iteration]))
 
-        for bus in values_bus:
-            for pin in bus.pin:
-                temp_pin = bus.pin
-                if temp_pin[pin].name in keys_bus_related_pins:
-                    if hasattr(temp_pin[pin], 'timing'):
-                        if temp_pin[pin].name not in timing_data_bus.keys():
-                            keys_bus_related_pins.append(temp_pin[pin].name)
-                            timing_data_bus[temp_pin[pin].name] = []
-                        if temp_pin[pin].name in timing_data_bus.keys():
-                            timing_data_bus[temp_pin[pin].name].append(temp_pin[pin].timing)
+                for iteration in range(0, len(merged_fall)):
+                    if hasattr(values[0].pin[key].timing[iteration], 'fall_constraint'):
+                        if 'scalar' in values[0].pin[key].timing[iteration].fall_constraint:
+                            values[0].pin[key].timing[iteration].fall_constraint['scalar'].values \
+                                = tuple(copy.deepcopy(merged_fall[iteration]))
 
-        for key in keys_bus:
-            bus_final_data[key] = {}
-            for pin_key in keys_bus_related_pins:
-                bus_final_data[key][pin_key] = timing_data_bus[pin_key][0]
 
-    # Pin
-    for key in pins:
-        if hasattr(timing_data[key][0][0], 'rise_constraint') or hasattr(timing_data[key][0][0], 'fall_constraint'):
-            rise_constraint_data, fall_constraint_data = pin_data_init(timing_data, key)
-
-            merged_rise = {}
-            for i, instance in rise_constraint_data.items():
-                merged_rise[i] = merge_pins(instance).split()
-
-            merged_fall = {}
-            for i, instance in fall_constraint_data.items():
-                merged_fall[i] = merge_pins(instance).split()
-
-            for iteration in range(0, len(merged_rise)):
-                if hasattr(values[0].pin[key].timing[iteration], 'rise_constraint'):
-                    if 'scalar' in values[0].pin[key].timing[iteration].rise_constraint:
-                        values[0].pin[key].timing[iteration].rise_constraint['scalar'].values = tuple(copy.deepcopy(merged_rise[iteration]))
-
-            for iteration in range(0, len(merged_fall)):
-                if hasattr(values[0].pin[key].timing[iteration], 'fall_constraint'):
-                    if 'scalar' in values[0].pin[key].timing[iteration].fall_constraint:
-                        values[0].pin[key].timing[iteration].fall_constraint['scalar'].values = tuple(copy.deepcopy(merged_fall[iteration]))
-
-    # Bus
-    for key in keys_bus:
-        bus_rise_constraint, bus_fall_constraint = bus_data_init(timing_data_bus, key, keys_bus_related_pins)
-        for related_key in keys_bus_related_pins:
-            if hasattr(bus_final_data[key][related_key][0], 'rise_constraint') or hasattr(bus_final_data[key][related_key][0], 'fall_constraint'):
-                bus_rise_constraint_data = merge_bus(bus_rise_constraint[related_key])
-                bus_fall_constraint_data = merge_bus(bus_fall_constraint[related_key])
-
-                for iteration in range(0, len(bus_rise_constraint_data)):
-                    if related_key in values[0].bus[key].pin:
-                        if hasattr(values[0].bus[key].pin[related_key].timing[iteration], 'rise_constraint'):
-                                if 'scalar' in values[0].bus[key].pin[related_key].timing[iteration].rise_constraint:
-                                    values[0].bus[key].pin[related_key].timing[iteration].rise_constraint['scalar'].values = copy.deepcopy(bus_rise_constraint_data[iteration])
-
-                for iteration in range(0, len(bus_fall_constraint_data)):
-                    if related_key in values[0].bus[key].pin:
-                        if hasattr(values[0].bus[key].pin[related_key].timing[iteration], 'fall_constraint'):
-                                if 'scalar' in values[0].bus[key].pin[related_key].timing[iteration].fall_constraint:
-                                    values[0].bus[key].pin[related_key].timing[iteration].fall_constraint['scalar'].values = copy.deepcopy(bus_fall_constraint_data[iteration])
 
     final_data = values[0]
-    print(f"The scalar data have been merged.")
     return final_data

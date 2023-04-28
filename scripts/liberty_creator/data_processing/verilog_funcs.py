@@ -1,90 +1,80 @@
 import re
-from typing import List
+from typing import Any, List, Tuple
 import os
 
 class Module:
     def __init__(self, name: str = '') -> None:
         self.name = name
-        self.attachments = list()
-        self.called = False
-        self.attach_num = 0
         self.inputs = list()
-        self.content = list()
 
-def get_design_inputs(filename: str, design_name: str) -> List[str]:
-    module_list = list()
-    inputs = list()
-
-    module_list = get_modules(filename)
-
-    for m in module_list:
-        if m.name == design_name:
-            design_module = m
-
-    inputs = design_module.inputs
-
-    return inputs
-
-
-def get_modules(filename: str) -> List[Module]:
-    module_list = list()
+def get_design_inputs(filename: str, design_name: str) -> Tuple[bool, Any]:
+    """
+    Возвращает кортеж (success, result)
+    При success = True, result будет содержать список имен искомого модуля   List[str]
+    При success = False, result будет содержать сообщение об ошибке          str
+    """
+    success = True
+    result = ""
+    is_comment_block = False
+    module = Module()
 
     with open(file=filename, mode='rt') as file:
         lines = file.read().split('\n')
         is_module_section = False
 
         for curr_line in lines:
-            curr_line = skip_comment(curr_line).replace('\t', ' ')
+            curr_line = skip_comment(curr_line)
 
-            if curr_line == ' ' or '`define' in curr_line:
+            if curr_line.strip().startswith('`define'):
                 continue
 
-            if not is_module_section:
-                if 'module' in curr_line and not 'endmodule' in curr_line:
-                    module = Module()
+            if '/*' in curr_line and not is_comment_block:
+                is_comment_block = True
+
+            if '*/' in curr_line and is_comment_block:
+                is_comment_block = False
+                continue
+
+            if not is_module_section and not is_comment_block:
+                if curr_line.strip().startswith('module ' + design_name):
+                    module.name = design_name
                     is_module_section = True
                 else:
                     continue
 
             if is_module_section:
-                module.content.append(curr_line)
                 if curr_line.strip().startswith('input'):
-                    input_line = re.sub(r'\[[^()]*\]', '', curr_line)  # subtracting size
-                    input_line = input_line.replace('wire', '').replace('reg', '')
-                    inputs = input_line[input_line.find('input') + len('input'):input_line.find(';')].replace(' ', '').split(',')
+                    input_line = curr_line.strip().replace('input', '')
+                    input_line_wo_size = re.sub(r'\[[^()]*\]', '', input_line)  # subtracting size
+                    input_line_wo_size = input_line_wo_size.replace('wire', '').replace('reg', '')
+                    inputs = re.sub("[ ;]", "", input_line_wo_size).split(',')
+                    
                     for i in inputs:
                         if i in module.inputs:
-                            print("read verilog step:\n\tfatal: duplicate input name '%s', file '%s'!\n\texiting" % (i, filename))
-                            exit()
+                            success = False
+                            result = "Input name '%s' has a duplicate, in file '%s'" % (i, filename)
+                            break
                         if not is_good_name(i):
-                            print("read verilog step:\n\tfatal: bad input name '%s', file '%s'!\n\texiting" % (i, filename)),
-                            exit()
+                            success = False
+                            result = "Bad input name '%s', in file '%s'" % (i, filename)
+                            break
                         module.inputs.append(i)
 
-            if is_module_section and 'endmodule' in curr_line:
+            if is_module_section and curr_line.strip().startswith('endmodule') and not is_comment_block:
                 is_module_section = False
-                module_list.append(module)
 
-    for mod in module_list:
-        name = ''
-        for string in mod.content:
-            name += string
-            if '(' in string:
-                break
-        name = name[name.find('module') + len('module'):name.find('(')].strip()  # from 'module' to (
-        mod.name = name
+    if not module.name:
+        success = False
+        result = "No module in file '%s'" % (filename)
 
-    for x in module_list:
-        for y in module_list:
-            if x.name == y.name and x != y:
-                print("read verilog step:\n\tfatal: duplicate module name '%s'!\n\texiting" % x.name)
-                exit()
+    if not module.inputs and module.name:
+        success = False
+        result = "No inputs in module '%s'" % (design_name)
 
-    if not module_list:
-        print("read verilog step:\n\tfatal: no module in file!\n\texiting")
-        exit()
+    if success:
+        result = module.inputs
 
-    return module_list
+    return (success, result)
 
 
 def is_good_name(name: str) -> bool:
@@ -133,3 +123,9 @@ keyword_list = ['above', 'abs', 'absdelay', 'ac_stim', 'acos', 'acosh', 'always'
                 'transition', 'tri', 'tri0', 'tri1', 'triand', 'trior', 'trireg', 'vectored', 'wait', 'wand', 'weak0',
                 'weak1', 'while', 'white_noise', 'wire', 'wor', 'wreal', 'xnor', 'xor', 'zi_nd', 'zi_np', 'zi_zd',
                 'zi_zp']
+
+
+
+# print(get_design_inputs('/home/vinogradov/Liberty_flow/OpenLane/designs/inverter/runs/RUN_2023.04.27_07.32.32/results/synthesis/inverter.v', 'inverter'))
+
+# print(get_design_inputs('/home/vinogradov/Liberty_flow/OpenLane/designs/spm/runs/RUN_2023.04.27_06.59.38/results/synthesis/spm.v', 'spm'))

@@ -6,6 +6,7 @@ from file_merging import bus_funcs
 from file_merging import scalar_funcs
 import os
 import re
+import copy
 
 
 def data_load(data_dir: str) -> Tuple[List[Any], List[Tuple[Any, ...]]]:
@@ -19,6 +20,7 @@ def data_load(data_dir: str) -> Tuple[List[Any], List[Tuple[Any, ...]]]:
         if ext != '.lib':
             continue
 
+
         clk, clk_val, pin, pin_val = name[name.find('clk'):].split('_')
         if clk_val == 'NaN':
             data.append(t_file)
@@ -31,11 +33,6 @@ def data_load(data_dir: str) -> Tuple[List[Any], List[Tuple[Any, ...]]]:
         if re.search('.lib', file):
             data_files.append((float(tuple(re.findall("\d+\.\d+", file))[0]), lib))
             input_net_transitions.append(tuple(re.findall("\d+\.\d+", file)))
-
-
-    # for file in temp_data:
-    #     if re.search('.lib', file):
-    #         input_net_transitions.append(tuple(re.findall("\d+\.\d+", file)))
 
     return data_files, input_net_transitions
 
@@ -54,8 +51,9 @@ def data_load_legacy(data_dir):
     return data_files
 
 
-def final_merge(input_data, cell_name, pin_data, bus_data, scalar_data, clock_names='clk'):
-    input_data.cell[cell_name] = scalar_data
+def final_merge(input_data, cell_name, pin_data, bus_data, scalar_data, clock_names):
+    if scalar_data:
+        input_data.cell[cell_name] = scalar_data
 
     for pin in input_data.cell[cell_name].pin:
         if pin in clock_names:
@@ -90,66 +88,22 @@ def final_merge(input_data, cell_name, pin_data, bus_data, scalar_data, clock_na
     return merged_cell
 
 
-def data_init(data_files, data_files_scalar):
+def data_init(data_files, data_files_scalar, cell_name, clk_names):
 
-    pin_data = pin_funcs.final_pin_data(data_files)
-    scalar_data = scalar_funcs.final_data(data_files_scalar)
-    bus_data = bus_funcs.final_bus_data(data_files)
+    if hasattr(data_files[0].cell[cell_name], 'pin'):
+        pin_data = pin_funcs.final_pin_data(data_files)
+    else:
+        pin_data = None
+    if clk_names:
+        scalar_data = scalar_funcs.final_data(data_files_scalar)
+    else:
+        scalar_data = None
+    if hasattr(data_files[0].cell[cell_name], 'bus'):
+        bus_data = bus_funcs.final_bus_data(data_files)
+    else:
+        bus_data = None
 
     return pin_data, scalar_data, bus_data
-
-
-def post_formatting(file_name, name, input_net_transitions):
-    lib = Liberty.load(file_name)
-
-    template_counter = []
-    temp_template_counter = []
-
-    for item in lib.lu_table_template:
-        template_counter.append(item)
-
-    bus_data = lib.cell[name].bus
-    pin_data = lib.cell[name].pin
-
-    bus_keys = []
-    pin_keys = []
-
-    for bus in bus_data:
-        bus_keys.append(bus)
-
-    for pin in pin_data:
-        pin_keys.append(pin)
-
-    temp = []
-    with open(file_name, 'r') as file:
-        for line in file:
-            if 'rise_constraint (%sample%)' in line:
-                line = line.replace('%sample%', f'template_{len(template_counter)}')
-                temp_template_counter.append(f'template_{len(template_counter)}')
-
-            if 'fall_constraint (%sample%)' in line:
-                line = line.replace('%sample%', f'template_{len(template_counter)}')
-                temp_template_counter.append(f'template_{len(template_counter)}')
-
-            temp.append(line)
-    file.close()
-
-    with open(file_name, 'w') as file:
-        for line in temp:
-            file.write(line)
-    file.close()
-
-    temp = []
-    for item in input_net_transitions:
-        temp.append(item[0])
-
-    net_axis = set(temp)
-    for key in lib.lu_table_template:
-        template = lib.lu_table_template[key]
-
-    template.index_2 = net_axis
-
-    return 0
 
 
 def data_sort(data):
@@ -164,8 +118,8 @@ def data_sort(data):
 
     return data
 
-def data_sort_scalar(data):
 
+def data_sort_scalar(data):
     data = sorted(data, key= lambda x: (x[0][0], x[0][1]))
     temp_data = []
 
@@ -184,3 +138,114 @@ def get_temp_volt(data):
     voltage = voltage.replace('.', 'v')
 
     return temp, voltage
+
+
+def post_formatting(data_to, result_name, name, input_net_transitions, clk_names):
+    file_name = data_to + '/' + result_name
+    lib = Liberty.load(file_name)
+
+    template_counter = []
+    temp_template_counter = []
+
+    pin_data = []
+    bus_data =[]
+
+    if hasattr(lib.cell[name], 'bus'):
+        bus_data = lib.cell[name].bus
+    if hasattr(lib.cell[name], 'pin'):
+        pin_data = lib.cell[name].pin
+
+    bus_keys = []
+    pin_keys = []
+
+    for bus in bus_data:
+        bus_keys.append(bus)
+
+    for pin in pin_data:
+        pin_keys.append(pin)
+
+    with open(file_name, 'r') as file:
+        for line in file:
+            if 'template_' in line:
+                template_counter.append(line)
+    file.close()
+
+    for item in template_counter:
+        temp_template_counter += re.findall(r'\d+', item)
+
+    template_counter = set(temp_template_counter)
+
+    temp = []
+    with open(file_name, 'r') as file:
+        for line in file:
+            if 'rise_constraint (%sample%)' in line:
+                line = line.replace('%sample%', f'template_{len(template_counter) + 1}')
+
+            if 'fall_constraint (%sample%)' in line:
+                line = line.replace('%sample%', f'template_{len(template_counter) + 1}')
+
+            if 'library_features' in line:
+                line = ''
+
+            temp.append(line)
+    file.close()
+
+
+    with open(file_name, 'w') as file:
+        for line in temp:
+            file.write(line)
+    file.close()
+
+    for key in lib.lu_table_template:
+        template = copy.deepcopy(lib.lu_table_template[key])
+
+    if clk_names:
+        temp = []
+        for item in input_net_transitions:
+            temp.append(item[0])
+
+        net_ax = sorted(temp, key= lambda x: float(x))
+        temp = ''
+
+        for num in net_ax:
+            temp += num + ', '
+        temp = temp[0:-2]
+
+        net_ax = temp
+
+
+
+        net_ax = '"' + net_ax + '"'
+        net_ax = net_ax.replace(',', '')
+        net_ax = net_ax.split()
+        template.index_2 = tuple(net_ax)
+        template.index_1 = tuple(net_ax)
+        template.variable_1 = 'constrained_pin_transition'
+        template.variable_2 = 'related_pin_transition'
+
+
+        template.name = f'template_{len(template_counter) + 1}'
+
+    lib = Liberty.load(file_name)
+
+    for key in lib.lu_table_template:
+        temp = tuple(lib.lu_table_template[key].index_1.split())
+        temp_name = lib.lu_table_template[key].variable_1
+
+        lib.lu_table_template[key].index_1 = tuple(lib.lu_table_template[key].index_2.split())
+        lib.lu_table_template[key].index_2 = temp
+
+        lib.lu_table_template[key].variable_1 = lib.lu_table_template[key].variable_2.split()
+        lib.lu_table_template[key].variable_1 = temp_name
+
+
+    if clk_names:
+        lib.lu_table_template[template.name] = template
+
+    lib.comment = '""'
+
+    with open(data_to + '/' + result_name, 'w', encoding='utf-8') as final_solution:
+        lib.dump(final_solution, '')
+
+    return 0
+

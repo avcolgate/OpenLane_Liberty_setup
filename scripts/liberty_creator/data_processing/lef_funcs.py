@@ -2,7 +2,10 @@ import os
 import re
 
 def get_size(file_path: str) -> float:
-    if os.path.splitext(file_path)[1] != '.lef':
+
+    file_name, file_extension = os.path.splitext(file_path)
+    
+    if file_extension.lower() != '.lef':
         print("fatal (getting module size): extension of input file must be .lef")
         exit()
     if not os.path.exists(file_path):

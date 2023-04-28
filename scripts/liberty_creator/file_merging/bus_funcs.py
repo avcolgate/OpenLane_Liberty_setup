@@ -65,15 +65,13 @@ def table_merge(data):
                 #TODO: Cringe
                 right_bracket = ')'
                 line_feed = ''
-                temp_value = temp_value + tab + quotes + value + quotes + comma + line_feed
                 tab = ''
                 left_bracket = ''
                 right_bracket = ''
                 comma = ''
                 line_feed = '\n'
-                break
             else:
-                comma = ',' + '\\'
+                comma = ','
 
             temp_value = temp_value + tab + left_bracket + quotes + value + quotes + comma + right_bracket + line_feed
 
@@ -153,8 +151,9 @@ def final_bus_data(data_files):
                                 and pin_template_name in related_pin_instance.cell_fall.keys():
                             for cell_related_template in cell_fall_data:
                                 if pin_template_name in cell_related_template:
+                                    cell_related_template[pin_template_name] = cell_related_template[pin_template_name].replace(',', ' ')
                                     related_pin_instance.cell_fall[pin_template_name].values = \
-                                        cell_related_template[pin_template_name]
+                                        tuple(cell_related_template[pin_template_name].split())
 
             if hasattr(bus_final_data[key][0], 'cell_rise'):
                 for related_pin_instance in bus_final_data[key]:
@@ -167,8 +166,10 @@ def final_bus_data(data_files):
                                 and pin_template_name in related_pin_instance.cell_rise.keys():
                             for cell_related_template in cell_rise_data:
                                 if pin_template_name in cell_related_template:
+                                    cell_related_template[pin_template_name] = cell_related_template[
+                                        pin_template_name].replace(',', ' ')
                                     related_pin_instance.cell_rise[pin_template_name].values = \
-                                        cell_related_template[pin_template_name]
+                                        tuple(cell_related_template[pin_template_name].split())
 
             if hasattr(bus_final_data[key][0], 'fall_transition'):
                 for related_pin_instance in bus_final_data[key]:
@@ -182,8 +183,10 @@ def final_bus_data(data_files):
 
                             for cell_related_template in fall_transition_data:
                                 if pin_template_name in cell_related_template:
+                                    cell_related_template[pin_template_name] = cell_related_template[
+                                        pin_template_name].replace(',', ' ')
                                     related_pin_instance.fall_transition[pin_template_name].values = \
-                                        cell_related_template[pin_template_name]
+                                        tuple(cell_related_template[pin_template_name].split())
 
             if hasattr(bus_final_data[key][0], 'rise_transition'):
                 for related_pin_instance in bus_final_data[key]:
@@ -196,8 +199,10 @@ def final_bus_data(data_files):
                                 and pin_template_name in related_pin_instance.rise_transition.keys():
                             for cell_related_template in rise_transition_data:
                                 if pin_template_name in cell_related_template:
+                                    cell_related_template[pin_template_name] = cell_related_template[
+                                        pin_template_name].replace(',', ' ')
                                     related_pin_instance.rise_transition[pin_template_name].values = \
-                                        cell_related_template[pin_template_name]
+                                        tuple(cell_related_template[pin_template_name].split())
 
             #for index, name in enumerate(cell_fall_names):
             #    if name in bus_final_data[key][index].cell_fall.keys():
@@ -225,5 +230,4 @@ def final_bus_data(data_files):
                     values[0].bus[key].pin[item].timing[0] = bus_final_data[item][0]
 
     final_data = values[0]
-    print(f"All the buses have been combined.")
     return final_data

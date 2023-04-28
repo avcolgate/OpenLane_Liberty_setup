@@ -8,4 +8,5 @@ from .models.Circuit import Circuit
 
 import importlib.util
 if importlib.util.find_spec('pyeda') is None:
-    print('Warning: pyeda module is not found, some of the expression processing features will be inaccessible')
+    pass
+

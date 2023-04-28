@@ -53,7 +53,12 @@ def add_axis(data, input_net_transitions):
         basic_data_array[index].add_index(second_axis, 'input_net_transition')
 
     for index in basic_data_array:
-        data.lu_table_template[index.name].index_2 = index.index_2
+        index.index_1 = index.index_1.replace(',', '')
+        index.index_2 = index.index_2.replace(',', '')
+        index.index_1 = '"' + index.index_1 + '"'
+        index.index_2 = '"' + index.index_2 + '"'
+        data.lu_table_template[index.name].index_1 = tuple(index.index_1.split())
+        data.lu_table_template[index.name].index_2 = tuple(index.index_2.split())
         data.lu_table_template[index.name].variable_2 = index.variable_2
 
 

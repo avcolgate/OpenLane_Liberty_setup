@@ -1,24 +1,35 @@
 import sys
 
 from data_processing.verilog_funcs import get_design_inputs
-from data_processing.lef_funcs import get_size
 from data_processing.lib_funcs import get_transitions
+from data_processing.lib_funcs import get_conditions
 from data_processing.tcl_funcs import make_tcl
 
 design_name = sys.argv[1]
 clocks = sys.argv[2]
 clock_period = sys.argv[3]
-verilog_path = sys.argv[4]
-path_lef = sys.argv[5]
-path_input_lib = sys.argv[6]
-dir_temp = sys.argv[7]
-results_dir = sys.argv[8]
+netlist_path = sys.argv[4]
+input_lib_path = sys.argv[5]
+tcl_dir = sys.argv[6]
+temp_lib_dir = sys.argv[7]
 
-module_inputs = get_design_inputs(verilog_path, design_name)
 
-module_size = get_size(path_lef)
+success, conditions = get_conditions(input_lib_path)
+if not success:
+    print(conditions)
+    exit()
 
-pin_transitions = get_transitions(path_input_lib)
+success, module_inputs = get_design_inputs(netlist_path, design_name)
+if not success:
+    print(module_inputs)
+    exit()
+
+success, pin_transitions = get_transitions(input_lib_path)
+if not success:
+    print(pin_transitions)
+    exit()
+
 clk_transitions = ['NaN'] if clocks == '' else pin_transitions
 
-make_tcl(design_name, module_inputs, clocks, clock_period, path_input_lib, pin_transitions, clk_transitions, results_dir, dir_temp)
+make_tcl(design_name, module_inputs, clocks, clock_period, input_lib_path, conditions, pin_transitions, 
+clk_transitions, temp_lib_dir, tcl_dir)
