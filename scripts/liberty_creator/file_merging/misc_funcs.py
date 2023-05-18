@@ -22,6 +22,7 @@ def data_load(data_dir: str) -> Tuple[List[Any], List[Tuple[Any, ...]]]:
 
 
         clk, clk_val, pin, pin_val = name[name.find('clk'):].split('_')
+
         if clk_val == 'NaN':
             data.append(t_file)
         else:
@@ -130,17 +131,7 @@ def data_sort_scalar(data):
 
     return data
 
-
-def get_temp_volt(data):
-
-    temp = str(int(float(data.nom_temperature)))
-    voltage = str(float(data.nom_voltage))
-    voltage = voltage.replace('.', 'v')
-
-    return temp, voltage
-
-
-def post_formatting(data_to, result_name, name, input_net_transitions, clk_names):
+def post_formatting(data_to, result_name, name, input_net_transitions, clk_names, size, leak, conditions):
     file_name = data_to + '/' + result_name
     lib = Liberty.load(file_name)
 
@@ -176,8 +167,32 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
     template_counter = set(temp_template_counter)
 
     temp = []
+    flag = False
+
+    case, temperature, voltage = conditions.split('_')
+
+    # temp_t = float(temperature)
+    temperature = float(temperature.replace('m', '-').replace('n', '-').replace('C', ''))
+    voltage = float(voltage.replace('v', '.'))
+
+    conditions = '"' + conditions + '"'
+
     with open(file_name, 'r') as file:
         for line in file:
+            if flag:
+                temporary = line
+                line =  f'area : {size};' + '\n' +\
+                        f'cell_leakage_power : {leak};' + '\n' +\
+                        'operating_conditions' + ' ' + f'({conditions})' + '{ \n' +\
+                        f'process     :   1.0;' + '\n'\
+                        f'voltage     :   {voltage};' + '\n'\
+                        f'temperature :    {temperature};' + '\n'\
+                        f'tree_type   : "balanced_tree";' + '\n'\
+                        + '}' +  '\n' \
+                        + f'default_operating_conditions : {conditions};' \
+                        + temporary
+                flag = False
+
             if 'rise_constraint (%sample%)' in line:
                 line = line.replace('%sample%', f'template_{len(template_counter) + 1}')
 
@@ -186,6 +201,9 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
 
             if 'library_features' in line:
                 line = ''
+
+            if 'nom_voltage' in line:
+                flag = True
 
             temp.append(line)
     file.close()
@@ -212,8 +230,6 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
         temp = temp[0:-2]
 
         net_ax = temp
-
-
 
         net_ax = '"' + net_ax + '"'
         net_ax = net_ax.replace(',', '')
