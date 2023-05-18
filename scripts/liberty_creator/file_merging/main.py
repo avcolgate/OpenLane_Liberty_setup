@@ -4,7 +4,7 @@ from copy import deepcopy
 
 
 
-def merge_lib(data_from, data_to, clock_names, size=1.0, leakage=1.0):
+def merge_lib(data_from, data_to, clock_names, size=1.0, leakage=1.0, conditions="nn_0C_0v0"):
     if clock_names:
         clock_names = clock_names.split()
 
@@ -19,7 +19,7 @@ def merge_lib(data_from, data_to, clock_names, size=1.0, leakage=1.0):
 
 
     data_template = deepcopy(data_files[0])
-    temperature, voltage = misc_funcs.get_temp_volt(data_template)
+    # temperature, voltage = misc_funcs.get_temp_volt(data_template)
     cell_name = next(iter(data_template.cell.keys()))
 
     pin_data, scalar_data, bus_data = misc_funcs.data_init(data_files, data_files_scalar, cell_name, clock_names)
@@ -30,16 +30,13 @@ def merge_lib(data_from, data_to, clock_names, size=1.0, leakage=1.0):
     # data_template.cell[cell_name].bus = ''
 
     data_from = data_from.split('/')[-1]
-    result_name = data_from + '_' + cell_name + '.lib'
+    result_name = cell_name + '_' + data_from + '.lib'
 
     if hasattr(data_template, 'comment'):
         data_template.comment = '""'
     with open(data_to + '/' + result_name, 'w', encoding='utf-8') as final_solution:
         data_template.dump(final_solution, '')
 
-    misc_funcs.post_formatting(data_to, result_name, cell_name, net_transitions, clock_names)
+    misc_funcs.post_formatting(data_to, result_name, cell_name, net_transitions, clock_names, size, leakage, conditions)
 
     return True
-
-
-

@@ -13,25 +13,27 @@ proc run_liberty_creator {additional_libs} {
 	}
 
 	if { ![file exists $::env(RESULTS_DIR)/signoff/$::env(DESIGN_NAME).lef]} {
-		puts_err "LEF file (for size calculating) doesn't exists in '::env(RESULTS_DIR)/signoff/$::env(DESIGN_NAME).lef'! Exiting..."
-		return
+		puts_warn "LEF file (for size calculating) doesn't exists in '$::env(RESULTS_DIR)/signoff/$::env(DESIGN_NAME).lef'! Size will set to 1."
+		set SIZE 1
 	} else {
 		set LEF $::env(RESULTS_DIR)/signoff/$::env(DESIGN_NAME).lef
+		set SIZE [exec python3 $::env(SCRIPTS_DIR)/liberty_creator/get_size.py $LEF]
 	}
 
-	if { ![file exists [glob $::env(signoff_logs)/*_sta.log]]} {
-		puts_err "STA log (for leakage power) doesn't exists in '$::env(signoff_logs)'! Exiting..."
-		return
+	if { ![file exists $::env(signoff_logs)/28-rcx_sta.log]} {
+		puts_warn "STA log (for leakage power) doesn't exists in '$::env(signoff_logs)'! Leakage power will set to 1."
+		set LEAKAGE 1
 	} else {
-		set LEAKAGE [glob $::env(signoff_logs)/*_sta.log]
+		set STA_LOG [glob $::env(signoff_logs)/*_sta.log]
+		set LEAKAGE [exec python3 $::env(SCRIPTS_DIR)/liberty_creator/get_leakage.py $STA_LOG]
 	}
 	
-	make_PVT $::env(LIB_SLOWEST) $NETLIST $LEF $LEAKAGE
-	make_PVT $::env(LIB_FASTEST) $NETLIST $LEF $LEAKAGE
-    make_PVT $::env(LIB_TYPICAL) $NETLIST $LEF $LEAKAGE
+	make_PVT $::env(LIB_SLOWEST) $NETLIST $SIZE $LEAKAGE
+	make_PVT $::env(LIB_FASTEST) $NETLIST $SIZE $LEAKAGE
+    make_PVT $::env(LIB_TYPICAL) $NETLIST $SIZE $LEAKAGE
 
 	foreach lib $additional_libs {
-		make_PVT $lib $NETLIST $LEF $LEAKAGE
+		make_PVT $lib $NETLIST $SIZE $LEAKAGE
 	}
 
 	TIMER::timer_stop
@@ -39,15 +41,15 @@ proc run_liberty_creator {additional_libs} {
 }
 
 
-proc make_PVT {LIBRARY NETLIST LEF LEAKAGE}  {
+proc make_PVT {LIBRARY NETLIST SIZE LEAKAGE}  {
 
 	if { ![file exists $LIBRARY]} {
 		puts_warn "Library $LIBRARY doesn't exists! Skipping..."
 		return
 	}
 
-    set lib_name_dot_ext [lindex [split $LIBRARY '/'] end]
-    set lib_name         [lindex [split $lib_name_dot_ext '.'] end-1]
+	set CONDITIONS [exec python3 $::env(SCRIPTS_DIR)/liberty_creator/get_conditions.py $LIBRARY]
+	set lib_name $CONDITIONS
 
     set LIB_TEMP_DIR $::env(TMP_DIR)/liberty_creator/lib/$lib_name
     set TCL_TEMP_DIR $::env(TMP_DIR)/liberty_creator/tcl/$lib_name
@@ -79,7 +81,8 @@ proc make_PVT {LIBRARY NETLIST LEF LEAKAGE}  {
 				$LIB_FINAL_DIR \
 				$::env(CLOCK_PORT) \
 				$LEAKAGE \
-				$LEF
+				$SIZE \
+				$CONDITIONS
 	]
 	if {!($mlib_status eq "")} {
 		set err_msg "Error in merging lib files during making Liberty $lib_name\n$mlib_status"

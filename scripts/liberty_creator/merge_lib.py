@@ -6,12 +6,9 @@ from data_processing.lef_funcs import get_size
 data_from = sys.argv[1]
 data_to = sys.argv[2]
 clock_names = sys.argv[3]
-leakage_file = sys.argv[4]
-lef_file = sys.argv[5]
+leakage = sys.argv[4]
+size = sys.argv[5]
+conditions = sys.argv[6]
 
-leakage = get_leakage(leakage_file)
-
-size = get_size(lef_file)
-
-merge_lib(data_from=data_from, data_to=data_to, clock_names=clock_names, size=size, leakage=leakage)
+merge_lib(data_from=data_from, data_to=data_to, clock_names=clock_names, size=size, leakage=leakage, conditions=conditions)
 

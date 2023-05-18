@@ -130,7 +130,7 @@ proc run_magic_step {args} {
 }
 proc run_liberty_creator_step {args} {
     set additional_libs [list]
-	lappend additional_libs "/home/vinogradov/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fake.lib"
+	lappend additional_libs "sky130_fake_lib.lib"
 
     run_liberty_creator $additional_libs
 }

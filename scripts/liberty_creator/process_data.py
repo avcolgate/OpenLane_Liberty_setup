@@ -14,20 +14,26 @@ tcl_dir = sys.argv[6]
 temp_lib_dir = sys.argv[7]
 
 
-success, conditions = get_conditions(input_lib_path)
+success, result = get_conditions(input_lib_path)
 if not success:
-    print(conditions)
+    print(result)
     exit()
+else:
+    conditions = result
 
-success, module_inputs = get_design_inputs(netlist_path, design_name)
+success, result = get_design_inputs(netlist_path, design_name)
 if not success:
-    print(module_inputs)
+    print(result)
     exit()
+else:
+    module_inputs = result
 
-success, pin_transitions = get_transitions(input_lib_path)
+success, result = get_transitions(input_lib_path)
 if not success:
-    print(pin_transitions)
+    print(result)
     exit()
+else:
+    pin_transitions = result
 
 clk_transitions = ['NaN'] if clocks == '' else pin_transitions
 
