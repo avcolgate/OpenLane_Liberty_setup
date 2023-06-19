@@ -13,27 +13,35 @@ proc run_liberty_creator {additional_libs} {
 	}
 
 	if { ![file exists $::env(RESULTS_DIR)/signoff/$::env(DESIGN_NAME).lef]} {
-		puts_warn "LEF file (for size calculating) doesn't exists in '$::env(RESULTS_DIR)/signoff/$::env(DESIGN_NAME).lef'! Size will set to 1."
+		puts_warn "LEF file (for size calculating) doesn't exists in '$::env(RESULTS_DIR)/signoff/$::env(DESIGN_NAME).lef'! Size will be set to 1."
 		set SIZE 1
 	} else {
 		set LEF $::env(RESULTS_DIR)/signoff/$::env(DESIGN_NAME).lef
 		set SIZE [exec python3 $::env(SCRIPTS_DIR)/liberty_creator/get_size.py $LEF]
 	}
 
-	if { ![file exists $::env(signoff_logs)/28-rcx_sta.log]} {
-		puts_warn "STA log (for leakage power) doesn't exists in '$::env(signoff_logs)'! Leakage power will set to 1."
+	if { ![file exists [glob $::env(signoff_logs)/*_sta.log]]} {
+		puts_warn "STA log (for leakage power) doesn't exists in '$::env(signoff_logs)'! Leakage power will be set to 1."
 		set LEAKAGE 1
 	} else {
 		set STA_LOG [glob $::env(signoff_logs)/*_sta.log]
 		set LEAKAGE [exec python3 $::env(SCRIPTS_DIR)/liberty_creator/get_leakage.py $STA_LOG]
 	}
+
+	if { [info exists ::env(EXTRA_LIBS)]} {
+		set EXTRA_LIBRARIES $::env(EXTRA_LIBS)
+	} else {
+		set EXTRA_LIBRARIES [list]
+	}
+
+	puts $EXTRA_LIBRARIES
 	
-	make_PVT $::env(LIB_SLOWEST) $NETLIST $SIZE $LEAKAGE
-	make_PVT $::env(LIB_FASTEST) $NETLIST $SIZE $LEAKAGE
-    make_PVT $::env(LIB_TYPICAL) $NETLIST $SIZE $LEAKAGE
+	make_PVT $::env(LIB_SLOWEST) $NETLIST $SIZE $LEAKAGE $EXTRA_LIBRARIES
+	make_PVT $::env(LIB_FASTEST) $NETLIST $SIZE $LEAKAGE $EXTRA_LIBRARIES
+    make_PVT $::env(LIB_TYPICAL) $NETLIST $SIZE $LEAKAGE $EXTRA_LIBRARIES
 
 	foreach lib $additional_libs {
-		make_PVT $lib $NETLIST $SIZE $LEAKAGE
+		make_PVT $lib $NETLIST $SIZE $LEAKAGE $EXTRA_LIBRARIES
 	}
 
 	TIMER::timer_stop
@@ -41,7 +49,7 @@ proc run_liberty_creator {additional_libs} {
 }
 
 
-proc make_PVT {LIBRARY NETLIST SIZE LEAKAGE}  {
+proc make_PVT {LIBRARY NETLIST SIZE LEAKAGE EXTRA_LIBRARIES}  {
 
 	if { ![file exists $LIBRARY]} {
 		puts_warn "Library $LIBRARY doesn't exists! Skipping..."
@@ -65,6 +73,8 @@ proc make_PVT {LIBRARY NETLIST SIZE LEAKAGE}  {
 			$LIBRARY \
 			$TCL_TEMP_DIR \
 			$LIB_TEMP_DIR \
+			$CONDITIONS \
+			$EXTRA_LIBRARIES \
 	]
 	if {!($pdata_status eq "")} {
 		set err_msg "Error in data processing during making Liberty $lib_name\n$pdata_status"

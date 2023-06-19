@@ -1,14 +1,19 @@
 import os
+from typing import Any, Tuple
 
-def get_leakage(file_path: str) -> float:
+def get_leakage(file_path: str) -> Tuple[bool, Any]:
+    """
+    Возвращает кортеж (success, result)
+    При success = True, result будет содержать значение утечки мощности     float
+    При success = False, result будет содержать сообщение об ошибке         str
+    """
+    success = True
+    result = ""
+
     group_list = list()
     total_list = list()
     leakage_num = -1
     leakage = -1
-
-    if not os.path.exists(file_path):
-        print("get leakage step:\n\tfatal: input file does not exist\n\texiting")
-        exit()
 
     with open(file=file_path, mode='rt') as file:
         lines = file.read().split('\n')
@@ -28,14 +33,16 @@ def get_leakage(file_path: str) -> float:
                 break
 
         if not group_list:
-            print("get leakage step:\n\tfatal: Group line not found\n\texiting")
-            exit()
+            result = "Group line not found in OpenSTA log " + file_path 
+            success = False
         if not total_list:
-            print("get leakage step:\n\tfatal: Total line not found\n\texiting")
-            exit()
+            result =  "Total line not found in OpenSTA log " + file_path 
+            success = False
 
     if leakage == -1:
-        print("get leakage step:\n\tfatal: leagake not found\n\texiting")
-        exit()
+        result = "Leagake not found in OpenSTA log " + file_path 
+        success = False
     else:   
-        return leakage
+        result = leakage
+
+    return (success, result)

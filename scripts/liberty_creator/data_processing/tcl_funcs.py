@@ -10,10 +10,13 @@ def make_tcl(
     pin_transitions: List[float],
     clk_transitions: List[float],
     temp_lib_dir: str,
-    tcl_dir: str
+    tcl_dir: str,
+    extra_lib_paths: List[str]
     ) -> None:
 
     clock_list = clocks.split()
+
+    extra_lib_list = extra_lib_paths.split()
 
     for clk in clock_list:
         module_inputs.remove(clk)
@@ -29,6 +32,9 @@ def make_tcl(
     output_tcl.write('read_db $::env(CURRENT_ODB)\n')
 
     output_tcl.write('read_liberty ' + path_input_lib + '\n')
+
+    for lib in extra_lib_list:
+        output_tcl.write('read_liberty ' + lib + '\n')
 
     for clk in clock_list:
         output_tcl.write('create_clock -name %s -period %f [get_ports {%s}]\n' % (clk, float(clock_period), clk))

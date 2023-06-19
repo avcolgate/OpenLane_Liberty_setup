@@ -82,10 +82,16 @@ def get_transitions(file_path: str) -> Tuple[bool, Any]:
 
     return (success, result)
 
-def get_conditions(file_path: str) -> Tuple[bool, Any]:
-    conditions = ""
-    result = ""
+def get_conditions(file_path: str) -> Tuple[bool, str]:
+    """
+    Возвращает кортеж (success, result)
+    При success = True, result будет содержать строку, содержащую параметр default_operating_conditions  str
+    При success = False, result будет содержать сообщение об ошибке                                      str
+    """
     success = True
+    result = ""
+
+    conditions = ""
 
     f = open(file_path, 'r')
     for line in f:
@@ -94,8 +100,8 @@ def get_conditions(file_path: str) -> Tuple[bool, Any]:
             break
 
     if not conditions:
-        success = False
         result = "No information about default operating conditions in Library"
+        success = False
     else:
         result = conditions
 
