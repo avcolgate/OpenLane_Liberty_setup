@@ -5,6 +5,7 @@ sta_log_file = sys.argv[1]
 
 success, result = get_leakage(sta_log_file)
 if not success:
+    leakage = 0.0
     print(result)
     exit()
 else:

@@ -5,6 +5,7 @@ lef_file = sys.argv[1]
 
 success, result = get_size(lef_file)
 if not success:
+    size = 0.0
     print(result)
     exit()
 else:

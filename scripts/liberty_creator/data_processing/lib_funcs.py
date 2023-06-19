@@ -1,11 +1,13 @@
 from typing import Any, List, Tuple
 import re
 
+
 class Template:
     def __init__(self, name=''):
         self.name = name
         self.variables: List[str] = []
         self.indices: List[List[float]] = []
+
 
 def parse_templates(file_path: str) -> List[Template]:
     template_list = []
@@ -16,17 +18,17 @@ def parse_templates(file_path: str) -> List[Template]:
         if not is_template_section and line.strip().startswith('lu_table_template'):
             is_template_section = True
             template = Template()
-            name = re.search("\((.+)\)", line) # collecting name of template in parentheses
-            template.name  = name
+            name = re.search('\((.+)\)', line)  # collecting name of template in parentheses
+            template.name = name
 
         if is_template_section:
             if 'variable' in line:
-                var = line[line.find(':')+1:line.find(';')].replace('"', '').strip()
+                var = line[line.find(':') + 1:line.find(';')].replace('"', '').strip()
                 template.variables.append(var)
 
             if 'index' in line:
                 index_list = list()
-                index_line = line[line.find('(')+1:line.find(')')].replace('"', '').strip()
+                index_line = line[line.find('(') + 1:line.find(')')].replace('"', '').strip()
                 temp_list = index_line.replace(' ', '').split(',')
                 for ind in temp_list:
                     index_list.append(float(ind))
@@ -62,12 +64,12 @@ def get_transitions(file_path: str) -> Tuple[bool, Any]:
 
     # choosing template where the maximum capacitance is minimal
     for t in template_list:
-        if 'input_net_transition'         in t.variables and \
-           'total_output_net_capacitance' in t.variables and \
-            len(t.indices) == len(t.variables) == 2:
+        if 'input_net_transition' in t.variables and \
+                'total_output_net_capacitance' in t.variables and \
+                len(t.indices) == len(t.variables) == 2:
             for num, var in enumerate(t.variables):
                 if var == 'total_output_net_capacitance':
-                    value = t.indices[num][-1] # the last (max) index in line of total_output_net_capacitance
+                    value = t.indices[num][-1]  # the last (max) index in line of total_output_net_capacitance
             if value < min_value:
                 min_value = value
                 template = t
@@ -80,7 +82,8 @@ def get_transitions(file_path: str) -> Tuple[bool, Any]:
         if var == 'input_net_transition':
             result = template.indices[num]
 
-    return (success, result)
+    return success, result
+
 
 def get_conditions(file_path: str) -> Tuple[bool, str]:
     """
@@ -96,7 +99,7 @@ def get_conditions(file_path: str) -> Tuple[bool, str]:
     f = open(file_path, 'r')
     for line in f:
         if line.strip().startswith('default_operating_conditions'):
-            conditions = line[line.find('"')+1:line.rfind('"')].strip()
+            conditions = line[line.find('"') + 1:line.rfind('"')].strip()
             break
 
     if not conditions:
@@ -105,8 +108,7 @@ def get_conditions(file_path: str) -> Tuple[bool, str]:
     else:
         result = conditions
 
-    return (success, result)
-
+    return success, result
 
 # print(get_conditions('/home/vinogradov/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib'))
 

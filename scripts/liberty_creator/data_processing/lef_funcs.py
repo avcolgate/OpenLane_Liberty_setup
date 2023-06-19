@@ -2,6 +2,7 @@ from typing import Any, Tuple
 import os
 import re
 
+
 def get_size(file_path: str) -> Tuple[bool, Any]:
     """
     Возвращает кортеж (success, result)
@@ -28,7 +29,7 @@ def get_size(file_path: str) -> Tuple[bool, Any]:
 
             if section_macro and 'SIZE' in line:
                 size = line.replace('SIZE ', '')
-                size = re.sub("[;| ]", "", size)
+                size = re.sub('[;| ]', "", size)
                 x, y = size.split('BY')
                 area = float(x) * float(y)
                 continue
@@ -46,4 +47,4 @@ def get_size(file_path: str) -> Tuple[bool, Any]:
         else: 
             result = area
 
-    return (success, result)
+    return success, result

@@ -1,11 +1,12 @@
 import re
-from typing import Any, List, Tuple
-import os
+from typing import Any, Tuple
+
 
 class Module:
     def __init__(self, name: str = '') -> None:
         self.name = name
         self.inputs = list()
+
 
 def get_design_inputs(filename: str, design_name: str) -> Tuple[bool, Any]:
     """
@@ -45,10 +46,10 @@ def get_design_inputs(filename: str, design_name: str) -> Tuple[bool, Any]:
             if is_module_section:
                 if curr_line.strip().startswith('input'):
                     input_line = curr_line.strip().replace('input', '')
-                    input_line_wo_size = re.sub(r'\[[^()]*\]', '', input_line)  # subtracting size
+                    input_line_wo_size = re.sub(r'\[[^()]*]', '', input_line)  # subtracting size
                     input_line_wo_size = input_line_wo_size.replace('wire', '').replace('reg', '')
                     inputs = re.sub("[ ;]", "", input_line_wo_size).split(',')
-                    
+
                     for i in inputs:
                         if i in module.inputs:
                             success = False
@@ -65,16 +66,16 @@ def get_design_inputs(filename: str, design_name: str) -> Tuple[bool, Any]:
 
     if not module.name:
         success = False
-        result = "No module in file '%s'" % (filename)
+        result = "No module in file '%s'" % filename
 
     if not module.inputs and module.name:
         success = False
-        result = "No inputs in module '%s'" % (design_name)
+        result = "No inputs in module '%s'" % design_name
 
     if success:
         result = module.inputs
 
-    return (success, result)
+    return success, result
 
 
 def is_good_name(name: str) -> bool:
@@ -105,6 +106,7 @@ def skip_comment(line: str) -> str:
         line = line[:line.find('//')]
     return line
 
+
 keyword_list = ['above', 'abs', 'absdelay', 'ac_stim', 'acos', 'acosh', 'always', 'analog', 'analysis', 'and', 'asin',
                 'asinh', 'assign', 'atan', 'atan2', 'atanh', 'begin', 'branch', 'buf', 'bufif0', 'bufif1', 'case',
                 'casex', 'casez', 'ceil', 'cmos', 'connectrules', 'cos', 'cosh', 'cross', 'ddt', 'deassign', 'default',
@@ -123,8 +125,6 @@ keyword_list = ['above', 'abs', 'absdelay', 'ac_stim', 'acos', 'acosh', 'always'
                 'transition', 'tri', 'tri0', 'tri1', 'triand', 'trior', 'trireg', 'vectored', 'wait', 'wand', 'weak0',
                 'weak1', 'while', 'white_noise', 'wire', 'wor', 'wreal', 'xnor', 'xor', 'zi_nd', 'zi_np', 'zi_zd',
                 'zi_zp']
-
-
 
 # print(get_design_inputs('/home/vinogradov/Liberty_flow/OpenLane/designs/inverter/runs/RUN_2023.04.27_07.32.32/results/synthesis/inverter.v', 'inverter'))
 

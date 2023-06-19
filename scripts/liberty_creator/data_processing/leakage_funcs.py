@@ -1,5 +1,5 @@
-import os
 from typing import Any, Tuple
+
 
 def get_leakage(file_path: str) -> Tuple[bool, Any]:
     """
@@ -20,7 +20,7 @@ def get_leakage(file_path: str) -> Tuple[bool, Any]:
 
         for line in lines:
             if 'Group' in line and \
-                'Leakage' in line and not group_list:
+                    'Leakage' in line and not group_list:
                 group_list = line.split()
                 for num, item in enumerate(group_list):
                     if str(item) == 'Leakage':
@@ -33,16 +33,16 @@ def get_leakage(file_path: str) -> Tuple[bool, Any]:
                 break
 
         if not group_list:
-            result = "Group line not found in OpenSTA log " + file_path 
+            result = "Group line not found in OpenSTA log " + file_path
             success = False
         if not total_list:
-            result =  "Total line not found in OpenSTA log " + file_path 
+            result = "Total line not found in OpenSTA log " + file_path
             success = False
 
     if leakage == -1:
-        result = "Leagake not found in OpenSTA log " + file_path 
+        result = "Leakage not found in OpenSTA log " + file_path
         success = False
-    else:   
+    else:
         result = leakage
 
-    return (success, result)
+    return success, result

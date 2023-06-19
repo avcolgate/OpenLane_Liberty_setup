@@ -9,4 +9,3 @@ size = sys.argv[5]
 conditions = sys.argv[6]
 
 merge_lib(data_from=data_from, data_to=data_to, clock_names=clock_names, size=size, leakage=leakage, conditions=conditions)
-

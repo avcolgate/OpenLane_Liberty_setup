@@ -16,6 +16,7 @@ extra_lib_paths = sys.argv[9]
 
 success, result = get_design_inputs(netlist_path, design_name)
 if not success:
+    module_inputs = []
     print(result)
     exit()
 else:
@@ -23,6 +24,7 @@ else:
 
 success, result = get_transitions(input_lib_path)
 if not success:
+    pin_transitions = []
     print(result)
     exit()
 else:
@@ -30,5 +32,5 @@ else:
 
 clk_transitions = ['NaN'] if clocks == '' else pin_transitions
 
-make_tcl(design_name, module_inputs, clocks, clock_period, input_lib_path, conditions, pin_transitions, 
-clk_transitions, temp_lib_dir, tcl_dir, extra_lib_paths)
+make_tcl(design_name, module_inputs, clocks, clock_period, input_lib_path, conditions, pin_transitions,
+         clk_transitions, temp_lib_dir, tcl_dir, extra_lib_paths)
