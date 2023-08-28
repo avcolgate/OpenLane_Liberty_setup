@@ -1,41 +1,48 @@
 import re
 from typing import Any, Tuple
 
-
+"""
+Класс, содержащий информацию об имени и входах модуля из Verilog файла
+"""
 class Module:
     def __init__(self, name: str = '') -> None:
         self.name = name
         self.inputs = list()
 
 
+"""
+Функция получения имен входов модуля с указанным именем
+
+Возвращает кортеж (success, result)
+При success = True, result будет содержать список имен искомого модуля   List[str]
+При success = False, result будет содержать сообщение об ошибке          str
+"""
 def get_design_inputs(filename: str, design_name: str) -> Tuple[bool, Any]:
-    """
-    Возвращает кортеж (success, result)
-    При success = True, result будет содержать список имен искомого модуля   List[str]
-    При success = False, result будет содержать сообщение об ошибке          str
-    """
-    success = True
+    success = True # флаг успешного выполнения функции
     result = ""
-    is_comment_block = False
+    is_comment_block = False # флаг блока комментариев
     module = Module()
 
     with open(file=filename, mode='rt') as file:
         lines = file.read().split('\n')
-        is_module_section = False
+        is_module_section = False # флаг блока искомого модуля
 
         for curr_line in lines:
-            curr_line = skip_comment(curr_line)
+            curr_line = skip_comment(curr_line) # пропуск комментариев в конце строки 
 
-            if curr_line.strip().startswith('`define'):
+            if curr_line.strip().startswith('`define'): # пропуск конструкции define
                 continue
 
+            # обработка блока с комментариями
             if '/*' in curr_line and not is_comment_block:
                 is_comment_block = True
 
+            # обработка блока с комментариями
             if '*/' in curr_line and is_comment_block:
                 is_comment_block = False
                 continue
 
+            # проверка начала секции модуля 
             if not is_module_section and not is_comment_block:
                 if curr_line.strip().startswith('module ' + design_name):
                     module.name = design_name
@@ -43,13 +50,15 @@ def get_design_inputs(filename: str, design_name: str) -> Tuple[bool, Any]:
                 else:
                     continue
 
-            if is_module_section:
+            # обработка строк, содержащих входы
+            if is_module_section and not is_comment_block:
                 if curr_line.strip().startswith('input'):
                     input_line = curr_line.strip().replace('input', '')
                     input_line_wo_size = re.sub(r'\[[^()]*]', '', input_line)  # subtracting size
                     input_line_wo_size = input_line_wo_size.replace('wire', '').replace('reg', '')
                     inputs = re.sub("[ ;]", "", input_line_wo_size).split(',')
 
+                    # добавление имен в массив имен, обработка ошибок
                     for i in inputs:
                         if i in module.inputs:
                             success = False
@@ -61,13 +70,16 @@ def get_design_inputs(filename: str, design_name: str) -> Tuple[bool, Any]:
                             break
                         module.inputs.append(i)
 
+            # проверка конца секции модуля 
             if is_module_section and curr_line.strip().startswith('endmodule') and not is_comment_block:
                 is_module_section = False
 
+    # обработка случая, когда искомый модуль не найден
     if not module.name:
         success = False
         result = "No module in file '%s'" % filename
 
+    # обработка случая, когда искомый модуль не имеет входов
     if not module.inputs and module.name:
         success = False
         result = "No inputs in module '%s'" % design_name
@@ -78,29 +90,35 @@ def get_design_inputs(filename: str, design_name: str) -> Tuple[bool, Any]:
     return success, result
 
 
+"""
+Функция, проверяющая имена на корректность
+"""
 def is_good_name(name: str) -> bool:
-    # cannot be a keyword
+    # имя не может быть ключевым словом
     if name in keyword_list:
         return False
 
-    # can include only letters, digits, _, $
+    # может содержать только буквы, цифры, _, $
     for letter in name:
         if letter.isalpha() or letter.isdigit() or letter == '_' or letter == '$':
             continue
         else:
             return False
 
-    # starts with alpha
+    # начинается с буквы
     if not str(name[0]).isalpha():
         return False
 
-    # cannot start with dollar
+    # не начинается с $
     if str(name[0]) == '$':
         return False
 
     return True
 
 
+"""
+Функция, пропускающая комментарии в конце строки
+"""
 def skip_comment(line: str) -> str:
     if '//' in line:
         line = line[:line.find('//')]
@@ -125,7 +143,3 @@ keyword_list = ['above', 'abs', 'absdelay', 'ac_stim', 'acos', 'acosh', 'always'
                 'transition', 'tri', 'tri0', 'tri1', 'triand', 'trior', 'trireg', 'vectored', 'wait', 'wand', 'weak0',
                 'weak1', 'while', 'white_noise', 'wire', 'wor', 'wreal', 'xnor', 'xor', 'zi_nd', 'zi_np', 'zi_zd',
                 'zi_zp']
-
-# print(get_design_inputs('/home/vinogradov/Liberty_flow/OpenLane/designs/inverter/runs/RUN_2023.04.27_07.32.32/results/synthesis/inverter.v', 'inverter'))
-
-# print(get_design_inputs('/home/vinogradov/Liberty_flow/OpenLane/designs/spm/runs/RUN_2023.04.27_06.59.38/results/synthesis/spm.v', 'spm'))

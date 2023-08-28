@@ -1,15 +1,16 @@
 from typing import Tuple, List, Any
 
 from file_merging.logic.models import Liberty
-from file_merging import pin_funcs
-from file_merging import bus_funcs
-from file_merging import scalar_funcs
 import os
 import re
 import copy
 
 
 def data_load(data_dir: str) -> Tuple[List[Any], List[Tuple[Any, ...]]]:
+    """
+    Return tuple of data files and net transition.
+    Data_dir: String path to data directory.
+    """
     data_files = list()
     data = list()
     temp_data = os.listdir(data_dir)
@@ -19,7 +20,6 @@ def data_load(data_dir: str) -> Tuple[List[Any], List[Tuple[Any, ...]]]:
         name, ext = os.path.splitext(t_file)
         if ext != '.lib':
             continue
-
 
         clk, clk_val, pin, pin_val = name[name.find('clk'):].split('_')
 
@@ -32,13 +32,16 @@ def data_load(data_dir: str) -> Tuple[List[Any], List[Tuple[Any, ...]]]:
     for count, file in enumerate(data):
         lib = Liberty.load(data_dir + '/' + data[count])
         if re.search('.lib', file):
-            data_files.append((float(tuple(re.findall("\d+\.\d+", file))[0]), lib))
+            data_files.append(lib)
             input_net_transitions.append(tuple(re.findall("\d+\.\d+", file)))
 
     return data_files, input_net_transitions
 
 
 def data_load_legacy(data_dir):
+    """
+    Legacy data load. Useful for tests.
+    """
     data_files = []
     data = os.listdir(data_dir)
     input_net_transitions = []
@@ -52,86 +55,36 @@ def data_load_legacy(data_dir):
     return data_files
 
 
-def final_merge(input_data, cell_name, pin_data, bus_data, scalar_data, clock_names):
-    if scalar_data:
-        input_data.cell[cell_name] = scalar_data
+def get_temp_volt(data):
+    """
+    Parse data for temperature and voltage.
+    data: template of .lib
+    """
 
-    for pin in input_data.cell[cell_name].pin:
-        if pin in clock_names:
-            input_data.cell[cell_name].pin[pin].clock = 'true'
+    temp = str(int(float(data.nom_temperature)))
+    voltage = str(float(data.nom_voltage))
+    voltage = voltage.replace('.', 'v')
 
-        if hasattr(input_data.cell[cell_name].pin[pin], 'timing'):
-            for index, item in enumerate(input_data.cell[cell_name].pin[pin].timing):
-                if hasattr(item, 'cell_fall'):
-                    item.cell_fall = pin_data.pin[pin].timing[index].cell_fall
-                if hasattr(item, 'cell_rise'):
-                    item.cell_rise = pin_data.pin[pin].timing[index].cell_rise
-                if hasattr(item, 'fall_transition'):
-                    item.fall_transition = pin_data.pin[pin].timing[index].fall_transition
-                if hasattr(item, 'rise_transition'):
-                    item.rise_transition = pin_data.pin[pin].timing[index].rise_transition
-
-    if hasattr(input_data.cell[cell_name], 'bus') and hasattr(bus_data, 'bus'):
-        for bus in input_data.cell[cell_name].bus:
-            for pin in input_data.cell[cell_name].bus[bus].pin:
-                if hasattr(input_data.cell[cell_name].bus[bus].pin[pin], 'timing'):
-                    for index, item in enumerate(input_data.cell[cell_name].bus[bus].pin[pin].timing):
-                        if hasattr(item, 'cell_fall'):
-                            item.cell_fall = bus_data.bus[bus].pin[pin].timing[index].cell_fall
-                        if hasattr(item, 'cell_rise'):
-                            item.cell_rise = bus_data.bus[bus].pin[pin].timing[index].cell_rise
-                        if hasattr(item, 'fall_transition'):
-                            item.fall_transition = bus_data.bus[bus].pin[pin].timing[index].fall_transition
-                        if hasattr(item, 'rise_transition'):
-                            item.rise_transition = bus_data.bus[bus].pin[pin].timing[index].rise_transition
-
-    merged_cell = input_data
-    return merged_cell
+    return temp, voltage
 
 
-def data_init(data_files, data_files_scalar, cell_name, clk_names):
+def post_formatting(data_to, result_name, name, input_net_transitions, clk_names, temperature, volt, size, leak):
+    """
+    Formatting dumped .lib.
+    Also add a structure with a size area size, cell_leakage_power, operating_conditions,
+    process  type (hard-coded) 1.0, voltage, temperature and tree_type (hard-coded) "balanced_tree"
 
-    if hasattr(data_files[0].cell[cell_name], 'pin'):
-        pin_data = pin_funcs.final_pin_data(data_files)
-    else:
-        pin_data = None
-    if clk_names:
-        scalar_data = scalar_funcs.final_data(data_files_scalar)
-    else:
-        scalar_data = None
-    if hasattr(data_files[0].cell[cell_name], 'bus'):
-        bus_data = bus_funcs.final_bus_data(data_files)
-    else:
-        bus_data = None
+    data_to: Output directory
+    result_name: Name of the dump
+    name:
+    input_net_transitions: net transitions
+    clk_names: list of clocks
+    temperature: temperature
+    volt: voltage
+    size: size of an area
+    leak: leaking data
 
-    return pin_data, scalar_data, bus_data
-
-
-def data_sort(data):
-
-    data = sorted(data, key= lambda x: x[0])
-    temp_data = []
-
-    for item in data:
-        temp_data.append(item[1])
-
-    data = temp_data
-
-    return data
-
-
-def data_sort_scalar(data):
-    data = sorted(data, key= lambda x: (x[0][0], x[0][1]))
-    temp_data = []
-
-    for item in data:
-        temp_data.append(item[1])
-
-    data = temp_data
-
-    return data
-
-def post_formatting(data_to, result_name, name, input_net_transitions, clk_names, size, leak, conditions):
+    """
     file_name = data_to + '/' + result_name
     lib = Liberty.load(file_name)
 
@@ -139,7 +92,7 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
     temp_template_counter = []
 
     pin_data = []
-    bus_data =[]
+    bus_data = []
 
     if hasattr(lib.cell[name], 'bus'):
         bus_data = lib.cell[name].bus
@@ -169,28 +122,21 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
     temp = []
     flag = False
 
-    case, temperature, voltage = conditions.split('_')
-
-    # temp_t = float(temperature)
-    temperature = float(temperature.replace('m', '-').replace('n', '-').replace('C', ''))
-    voltage = float(voltage.replace('v', '.'))
-
-    conditions = '"' + conditions + '"'
+    temperature = float(temperature)
+    volt = float(volt.replace('v', '.'))
 
     with open(file_name, 'r') as file:
         for line in file:
             if flag:
                 temporary = line
-                line =  f'area : {size};' + '\n' +\
-                        f'cell_leakage_power : {leak};' + '\n' +\
-                        'operating_conditions' + ' ' + f'({conditions})' + '{ \n' +\
-                        f'process     :   1.0;' + '\n'\
-                        f'voltage     :   {voltage};' + '\n'\
-                        f'temperature :    {temperature};' + '\n'\
-                        f'tree_type   : "balanced_tree";' + '\n'\
-                        + '}' +  '\n' \
-                        + f'default_operating_conditions : {conditions};' \
-                        + temporary
+                line = f'area : {size};' + '\n' + \
+                       f'cell_leakage_power : {leak};' + '\n' + \
+                       'operating_conditions' + ' ' + f'({name}_{temperature}C_{volt}' + 'VV)' + '{ \n' + \
+                       f'process     :   1.0;' + '\n' + \
+                       f'voltage     :   {volt};' + '\n' + \
+                       f'temperature :    {temperature};' + '\n' + \
+                       f'tree_type   : "balanced_tree";' + '\n' \
+                       + '}' + '\n' + temporary
                 flag = False
 
             if 'rise_constraint (%sample%)' in line:
@@ -208,7 +154,6 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
             temp.append(line)
     file.close()
 
-
     with open(file_name, 'w') as file:
         for line in temp:
             file.write(line)
@@ -222,7 +167,7 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
         for item in input_net_transitions:
             temp.append(item[0])
 
-        net_ax = sorted(temp, key= lambda x: float(x))
+        net_ax = sorted(temp, key=lambda x: float(x))
         temp = ''
 
         for num in net_ax:
@@ -234,11 +179,11 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
         net_ax = '"' + net_ax + '"'
         net_ax = net_ax.replace(',', '')
         net_ax = net_ax.split()
-        template.index_2 = tuple(net_ax)
+        if hasattr(template, 'index_2'):
+            template.index_2 = tuple(net_ax)
         template.index_1 = tuple(net_ax)
         template.variable_1 = 'constrained_pin_transition'
         template.variable_2 = 'related_pin_transition'
-
 
         template.name = f'template_{len(template_counter) + 1}'
 
@@ -248,20 +193,26 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
         temp = tuple(lib.lu_table_template[key].index_1.split())
         temp_name = lib.lu_table_template[key].variable_1
 
-        lib.lu_table_template[key].index_1 = tuple(lib.lu_table_template[key].index_2.split())
-        lib.lu_table_template[key].index_2 = temp
+        if hasattr(template, 'index_2'):
+            lib.lu_table_template[key].index_1 = tuple(lib.lu_table_template[key].index_2.split())
+            lib.lu_table_template[key].index_2 = temp
 
-        lib.lu_table_template[key].variable_1 = lib.lu_table_template[key].variable_2.split()
-        lib.lu_table_template[key].variable_1 = temp_name
-
+        if hasattr(template, 'index_2'):
+            lib.lu_table_template[key].variable_1 = lib.lu_table_template[key].variable_2.split()
+            lib.lu_table_template[key].variable_1 = temp_name
 
     if clk_names:
         lib.lu_table_template[template.name] = template
 
     lib.comment = '""'
 
+    # print('AAAAA\n' + lib.nom_temperature + '\n' + lib.nom_voltage + '\nAAAAAAAAAAAAA')
+
+    # lib.nom_temperature = float(temperature)
+    # volt = volt.replace('v', '.')
+    # lib.nom_voltage = float(volt)
+
     with open(data_to + '/' + result_name, 'w', encoding='utf-8') as final_solution:
         lib.dump(final_solution, '')
 
     return 0
-

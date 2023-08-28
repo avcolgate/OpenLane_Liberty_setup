@@ -1,7 +1,18 @@
 import re
 class BasicAxis:
-    index_1 = ""
+    """
+    Class that defines the structure of the axis used by Logic.
+    It is useful for creating dumps.
+
+    name: Template name.
+    The index_1 and index_2 attributes
+    define the input_net_transition and total_output_net_capacitance values
+    The index value for input_net_transition or total_output_net_capacitance is
+    a floating-point number.
+    """
+
     name = ""
+    index_1 = ""
     variable_1 = ""
     index_2 = ""
     variable_2 = ""
@@ -13,17 +24,35 @@ class BasicAxis:
         self.index_2 = "0"
         self.variable_2 = "0"
 
-    def axis(self, name, index_value, variable_name):
+    def axis(self, name, index_value, variables):
+        """
+        Axis initialization.
+        name: Template name.
+        index_value: List of indexes
+        variables: List of values
+        """
+
         self.name = name
         self.index_1 = index_value
-        self.variable_1 = variable_name
+        self.variable_1 = variables
 
     def add_index(self, index_value, variable_name):
+        """
+        Adding a new axis to the object.
+        index_value: List of indexes
+        variables: List of values
+        """
         self.index_2 = index_value
         self.variable_2 = variable_name
 
 # , indexes, values, names
 def add_axis(data, input_net_transitions):
+    """
+    Add a new template to the .lib. If there is no 'lu_table_template' return 0. If it is
+    data: template of a data.
+    input_net_transitions: net transitions.
+
+    """
 
     templates = []
     basic_data_array = []
