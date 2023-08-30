@@ -45,6 +45,7 @@ def merge_lib(data_from, data_to, clock_names= [], size=-1.0, leakage=-1.0, cond
 
     misc_funcs.post_formatting(data_to, result_name, cell_name, net_transitions, clock_names,
                                temperature, voltage, size, leakage)
+    misc_funcs.post_post_formatting(data_to, result_name)
 
     # print(data_to + '/' + result_name)
 

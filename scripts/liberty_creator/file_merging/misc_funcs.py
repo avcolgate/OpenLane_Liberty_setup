@@ -216,3 +216,22 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
         lib.dump(final_solution, '')
 
     return 0
+
+def post_post_formatting(data_to, result_name):
+    temp = []
+    file_name = data_to + '/' + result_name
+    with open(file_name, 'r') as file:
+        for line in file:
+            if 'related_pin' in line:
+                line = line.split()
+                line[0] = '\t\t' + line[0] + ' '
+                line[-1] = ' "' + line[-1][0:-1] + '";\n'
+                line = ''.join(line)
+
+            temp.append(line)
+        file.close()
+
+    with open(file_name, 'w') as file:
+        for line in temp:
+            file.write(line)
+    file.close()
