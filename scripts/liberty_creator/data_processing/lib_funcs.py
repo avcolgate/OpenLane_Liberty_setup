@@ -117,7 +117,7 @@ def get_conditions(file_path: str) -> Tuple[bool, str]:
     # поиск нужной строки
     for line in f:
         if line.strip().startswith('default_operating_conditions'):
-            conditions = line[line.find('"') + 1:line.rfind('"')].strip()
+            conditions = line[line.find(':') + 1:line.rfind(';')].strip().replace('"', '')
             break
 
     # обработка ошибки в случае, если искомая строка не найдена
@@ -129,7 +129,36 @@ def get_conditions(file_path: str) -> Tuple[bool, str]:
 
     return success, result
 
-# print(get_conditions('/home/vinogradov/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib'))
+"""
+Функция возвращает кортеж (success, result)
+
+При success = True, result будет содержать значение параметра leakage_power_unit                  str
+При success = False, result будет содержать сообщение об ошибке                               str
+"""
+def get_leakage_power_unit(file_path: str) -> Tuple[bool, str]:
+    success = True
+    result = ""
+    leakage_power_unit = ""
+
+    f = open(file_path, 'r')
+    # поиск нужной строки
+    for line in f:
+        if line.strip().startswith('leakage_power_unit'):
+            leakage_power_unit = line[line.find(':') + 1:line.rfind(';')].strip().replace('"', '')
+            break
+
+    # обработка ошибки в случае, если искомая строка не найдена
+    if not leakage_power_unit:
+        result = "No information about leakage_power_unit in Library"
+        success = False
+    else:
+        result = leakage_power_unit
+
+    return success, result
+
+# print(get_leakage_power_unit('/home/avc/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib'))
+
+# print(get_conditions('/home/avc/.volare/sky130A/libs.ref/sky130_fd_sc_hd/lib/sky130_fd_sc_hd__tt_025C_1v80.lib'))
 
 # print(get_transitions('/home/vinogradov/.volare/CMOS8F_4M/libs.ref/CORELIB8DLL/liberty/nom_1.65V_25C/CORELIB8DLL.lib'))
 

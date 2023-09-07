@@ -1,6 +1,7 @@
 from typing import Tuple, List, Any
 
 from file_merging.logic.models import Liberty
+from data_processing.lib_funcs import get_leakage_power_unit
 import os
 import re
 import copy
@@ -125,12 +126,26 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
     temperature = float(temperature)
     volt = float(volt.replace('v', '.'))
 
+    success, result = get_leakage_power_unit(file_name)
+    if not success:
+        leakage_power_unit = ''
+        print(result)
+        exit()
+    else:
+        leakage_power_unit = result
+
+        prefix = leakage_power_unit[leakage_power_unit.find('1')+1:leakage_power_unit.find('W')]
+        prefix_to_mul = float(prefix_dict.get(prefix, 'Неизвестная единица измерения leakage_power_unit'))
+        prefix_to_mul = '{0:.30f}'.format(prefix_to_mul)
+
+    cell_leakage_power = float(leak) / float(prefix_to_mul)
+
     with open(file_name, 'r') as file:
         for line in file:
             if flag:
                 temporary = line
                 line = f'area : {size};' + '\n' + \
-                       f'cell_leakage_power : {leak};' + '\n' + \
+                       f'cell_leakage_power : {cell_leakage_power};' + '\n' + \
                        'operating_conditions' + ' ' + f'({name}_{temperature}C_{volt}' + 'VV)' + '{ \n' + \
                        f'process     :   1.0;' + '\n' + \
                        f'voltage     :   {volt};' + '\n' + \
@@ -235,3 +250,24 @@ def post_post_formatting(data_to, result_name):
         for line in temp:
             file.write(line)
     file.close()
+
+
+prefix_dict = {'y': 1e-24,  # yocto
+           'z': 1e-21,  # zepto
+           'a': 1e-18,  # atto
+           'f': 1e-15,  # femto
+           'p': 1e-12,  # pico
+           'n': 1e-9,   # nano
+           'u': 1e-6,   # micro
+           'm': 1e-3,   # mili
+           'c': 1e-2,   # centi
+           'd': 1e-1,   # deci
+           'k': 1e3,    # kilo
+           'M': 1e6,    # mega
+           'G': 1e9,    # giga
+           'T': 1e12,   # tera
+           'P': 1e15,   # peta
+           'E': 1e18,   # exa
+           'Z': 1e21,   # zetta
+           'Y': 1e24,   # yotta
+    }
