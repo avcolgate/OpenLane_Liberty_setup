@@ -69,7 +69,7 @@ def get_temp_volt(data):
     return temp, voltage
 
 
-def post_formatting(data_to, result_name, name, input_net_transitions, clk_names, temperature, volt, size, leak):
+def post_formatting(data_to, result_name, name, input_net_transitions, clk_names, temperature, volt, size, leak, conditions):
     """
     Formatting dumped .lib.
     Also add a structure with a size area size, cell_leakage_power, operating_conditions,
@@ -84,6 +84,7 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
     volt: voltage
     size: size of an area
     leak: leaking data
+    conditions: operating_conditions
 
     """
     file_name = data_to + '/' + result_name
@@ -146,7 +147,7 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
                 temporary = line
                 line = f'area : {size};' + '\n' + \
                        f'cell_leakage_power : {cell_leakage_power};' + '\n' + \
-                       'operating_conditions' + ' ' + f'({name}_{temperature}C_{volt}' + 'VV)' + '{ \n' + \
+                       'operating_conditions' + ' ' + f'({conditions})' + '{ \n' + \
                        f'process     :   1.0;' + '\n' + \
                        f'voltage     :   {volt};' + '\n' + \
                        f'temperature :    {temperature};' + '\n' + \

@@ -12,7 +12,7 @@ def merge_lib(data_from, data_to, clock_names= [], size=-1.0, leakage=-1.0, cond
     clock_names: list of clock names
     size: size of an area
     leakage: power leakage
-    conditions: Useless now, but added for possible future changes.
+    conditions: operating_conditions
 
     """
 
@@ -44,7 +44,7 @@ def merge_lib(data_from, data_to, clock_names= [], size=-1.0, leakage=-1.0, cond
         data_template.dump(final_solution, '')
 
     misc_funcs.post_formatting(data_to, result_name, cell_name, net_transitions, clock_names,
-                               temperature, voltage, size, leakage)
+                               temperature, voltage, size, leakage, conditions)
     misc_funcs.post_post_formatting(data_to, result_name)
 
     # print(data_to + '/' + result_name)
