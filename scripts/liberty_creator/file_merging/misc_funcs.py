@@ -34,7 +34,7 @@ def data_load(data_dir: str) -> Tuple[List[Any], List[Tuple[Any, ...]]]:
         lib = Liberty.load(data_dir + '/' + data[count])
         if re.search('.lib', file):
             data_files.append(lib)
-            input_net_transitions.append(tuple(re.findall("\d+\.\d+", file)))
+            input_net_transitions.append(tuple(re.findall("\d+\.\d+", file[file.rfind('clk'):])))
 
     return data_files, input_net_transitions
 
@@ -215,7 +215,7 @@ def post_formatting(data_to, result_name, name, input_net_transitions, clk_names
 
         if hasattr(template, 'index_2'):
             lib.lu_table_template[key].variable_1 = lib.lu_table_template[key].variable_2.split()
-            lib.lu_table_template[key].variable_1 = temp_name
+            lib.lu_table_template[key].variable_2 = temp_name
 
     if clk_names:
         lib.lu_table_template[template.name] = template
